@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -24,13 +25,13 @@ public class Rreactor {
     private static List<Kimono<?>> executionQueue = new ArrayList<>();
 
     protected static void registerKimonoForExecution(Kimono<?> kimono) {
-        writeLog("registerKimonoForExecution()");
+        writeLog("registerKimonoForExecution(%s)", kimono.hashCode());
         executionQueue.add(kimono);
         doOnAnyUpdate();
     }
 
     protected static void executionCompletedForKimono(Kimono<?> kimono) {
-        writeLog("executionCompletedForKimono()");
+        writeLog("executionCompletedForKimono(%s)", kimono.hashCode());
         isBusy = false;
         doOnAnyUpdate();
     }

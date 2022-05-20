@@ -1,0 +1,35 @@
+
+//        // WORKING
+//        Kimono.now("Test")
+//                .map(str -> (double) str.length())
+//                .map(num -> num + Math.random())
+//                .map(str -> str + " Something")
+//                .map(str -> str + " is")
+//                .map(str -> str + " Right")
+//                .sideEffect(str -> {
+//                    System.out.println("OUTPUT: " + str);
+//                })
+//                .run();
+
+//        // WORKING
+//        Kimono
+//                .now(Math.random())
+//                .map(rndNum -> rndNum > 0.5 ? " Good" : " Sad")
+//                .sideEffect(str -> {
+//                    System.out.println("OUTPUT: " + str);
+//                })
+//                .run();
+
+//        // WORKING
+//        Kimono.now("Life")
+//                .map(str -> str + " is")
+//                .chain(str -> {
+//                    return Kimono
+//                            .now(Math.random())
+//                            .map(rndNum -> str + (rndNum > 0.5 ? " Good" : " Sad"));
+//                })
+//                .map(str -> str + ".")
+//                .sideEffect(str -> {
+//                    System.out.println("OUTPUT: " + str);
+//                })
+//                .run();

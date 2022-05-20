@@ -123,7 +123,7 @@ public class Kimono<T> {
 
     private void writeLog(String pattern, Object... value) {
         if (Rreactor.logLevel == LogLevel.LOG) {
-            var prefix = String.format("t:%s c:%s \t", Thread.currentThread().getName(), "KIMONO");
+            var prefix = String.format("t:%s c:%s<%s> \t", Thread.currentThread().getName(), "KIMONO", this.hashCode());
             System.out.println(String.format(prefix + pattern, value));
         }
     }
