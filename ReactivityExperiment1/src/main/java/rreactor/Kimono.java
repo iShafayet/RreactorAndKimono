@@ -1,5 +1,6 @@
 package rreactor;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -10,7 +11,7 @@ public class Kimono<T> {
     private Kimono<?> parent = null;
 
     private Kimono<?> next = null;
-    private KimonoOperator predicate = null;
+    private KimonoOperator operator = null;
 
     private Object inputValue = null;
 
@@ -18,10 +19,11 @@ public class Kimono<T> {
     private Function<Object, T> map_fn;
     private Function<Object, Kimono<T>> chain_fn;
     private Consumer<T> sideEffect_fn;
+    private CompletableFuture<T> produce_future;
 
     public static <U> Kimono<U> now(U value) {
         var kimono = new Kimono<U>();
-        kimono.predicate = KimonoOperator.NOW;
+        kimono.operator = KimonoOperator.NOW;
         kimono.now_value = value;
         return kimono;
     }
@@ -30,7 +32,7 @@ public class Kimono<T> {
         var kimono = new Kimono<U>();
         this.next = kimono;
         kimono.parent = this;
-        kimono.predicate = KimonoOperator.MAP;
+        kimono.operator = KimonoOperator.MAP;
         kimono.map_fn = (Function<Object, U>) fn;
         return kimono;
     }
@@ -39,7 +41,7 @@ public class Kimono<T> {
         var kimono = new Kimono<U>();
         this.next = kimono;
         kimono.parent = this;
-        kimono.predicate = KimonoOperator.CHAIN;
+        kimono.operator = KimonoOperator.CHAIN;
         kimono.chain_fn = (Function<Object, Kimono<U>>) fn;
         return kimono;
     }
@@ -48,7 +50,7 @@ public class Kimono<T> {
         var kimono = new Kimono<T>();
         this.next = kimono;
         kimono.parent = this;
-        kimono.predicate = KimonoOperator.SIDE_EFFECT;
+        kimono.operator = KimonoOperator.SIDE_EFFECT;
         kimono.sideEffect_fn = fn;
         return kimono;
     }
@@ -68,22 +70,22 @@ public class Kimono<T> {
         writeLog("executeInternally() - start");
         this.state = KimonoState.STARTED;
 
-        writeLog("executeInternally() - predicate: %s", this.predicate.name());
-        if (this.predicate == KimonoOperator.NOW) {
+        writeLog("executeInternally() - predicate: %s", this.operator.name());
+        if (this.operator == KimonoOperator.NOW) {
             var nextInputValue = this.now_value;
             writeLog("nextInputValue: %s", nextInputValue);
             if (this.next != null) {
                 this.next.inputValue = nextInputValue;
                 Rreactor.registerKimonoForExecution(this.next);
             }
-        } else if (this.predicate == KimonoOperator.MAP) {
+        } else if (this.operator == KimonoOperator.MAP) {
             var nextInputValue = map_fn.apply(this.inputValue);
             writeLog("nextInputValue: %s", nextInputValue);
             if (this.next != null) {
                 this.next.inputValue = nextInputValue;
                 Rreactor.registerKimonoForExecution(this.next);
             }
-        } else if (this.predicate == KimonoOperator.SIDE_EFFECT) {
+        } else if (this.operator == KimonoOperator.SIDE_EFFECT) {
             sideEffect_fn.accept((T) this.inputValue);
             var nextInputValue = this.inputValue;
             writeLog("nextInputValue: %s", nextInputValue);
@@ -91,21 +93,36 @@ public class Kimono<T> {
                 this.next.inputValue = nextInputValue;
                 Rreactor.registerKimonoForExecution(this.next);
             }
-        } else if (this.predicate == KimonoOperator.CHAIN) {
+        } else if (this.operator == KimonoOperator.CHAIN) {
             var nextMono = chain_fn.apply(this.inputValue);
             nextMono.next = this.next;
             nextMono.inputValue = this.inputValue;
             nextMono.run();
-//            Rreactor.registerKimonoForExecution(nextMono);
+        } else if (this.operator == KimonoOperator.PRODUCE_FUTURE) {
+            produce_future.thenAcceptAsync(nextInputValue -> {
+                writeLog("nextInputValue: %s", nextInputValue);
+                if (this.next != null) {
+                    this.next.inputValue = nextInputValue;
+                    Rreactor.registerKimonoForExecution(this.next);
+                }
+            });
         }
         this.state = KimonoState.ENDED;
         writeLog("executeInternally() - end");
         Rreactor.executionCompletedForKimono(this);
     }
 
+    public static <U> Kimono<U> produce(CompletableFuture<U> future) {
+        var kimono = new Kimono<U>();
+        kimono.operator = KimonoOperator.PRODUCE_FUTURE;
+        kimono.produce_future = future;
+        return kimono;
+    }
+
     private void writeLog(String pattern, Object... value) {
         if (Rreactor.logLevel == LogLevel.LOG) {
-            System.out.println(String.format("KIMONO " + pattern, value));
+            var prefix = String.format("t:%s c:%s ", Thread.currentThread().getName(), "KIMONO");
+            System.out.println(String.format(prefix + pattern, value));
         }
     }
 

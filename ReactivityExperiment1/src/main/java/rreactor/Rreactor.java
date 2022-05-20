@@ -36,7 +36,8 @@ public class Rreactor {
 
     private static void writeLog(String pattern, Object... value) {
         if (logLevel == LogLevel.LOG) {
-            System.out.println(String.format("RREACTOR " + pattern, value));
+            var prefix = String.format("t:%s c:%s ", Thread.currentThread().getName(), "REACTOR");
+            System.out.println(String.format(prefix + pattern, value));
         }
     }
 

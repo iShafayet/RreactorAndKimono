@@ -7,6 +7,7 @@ public enum KimonoOperator {
     MAP,
     SIDE_EFFECT,
     ON_ERROR,
+    PRODUCE_FUTURE
 
 
 }
