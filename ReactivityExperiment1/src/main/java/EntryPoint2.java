@@ -1,5 +1,4 @@
 import rreactor.Kimono;
-import rreactor.Rreactor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +9,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class EntryPoint2 {
-
 
     public static void main(String[] args) throws InterruptedException {
         // THIS CODE WORKS
@@ -25,13 +23,18 @@ public class EntryPoint2 {
                     writeLog("OUTPUT 1: %s", str);
                 })
                 .map(str -> str + " according to ")
-                .chain(EntryPoint2::getTitleOfAPageFake)
+                .chain(str -> {
+                    return Kimono
+                            .now(str)
+                            .chain(EntryPoint2::getTitleOfAPageFake)
+                            .map(str1 -> str + toTitleCase(str1));
+                })
                 .map(str -> str + ".")
                 .sideEffect(str -> {
                     writeLog("OUTPUT 2: %s", str);
                 })
                 .run();
-        
+
         Thread.sleep(5_000);
     }
 
@@ -46,7 +49,7 @@ public class EntryPoint2 {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            future.complete(textSoFar + "Wikipedia");
+            future.complete("wikipedia");
             executor.shutdown();
         });
         return Kimono.produce(future);
@@ -67,7 +70,7 @@ public class EntryPoint2 {
                 String responseBody = scanner.useDelimiter("\\A").next();
                 var title = responseBody.substring(responseBody.indexOf("<title>") + 7, responseBody.indexOf("</title>"));
 
-                future.complete(textSoFar + title);
+                future.complete(title);
 
             } catch (IOException ex) {
                 ex.printStackTrace();
@@ -85,6 +88,21 @@ public class EntryPoint2 {
         return Kimono.produce(future);
     }
 
+    public static String toTitleCase(String input) {
+        StringBuilder titleCase = new StringBuilder(input.length());
+        boolean nextTitleCase = true;
+
+        for (char c : input.toCharArray()) {
+            if (Character.isSpaceChar(c)) {
+                nextTitleCase = true;
+            } else if (nextTitleCase) {
+                c = Character.toTitleCase(c);
+                nextTitleCase = false;
+            }
+            titleCase.append(c);
+        }
+        return titleCase.toString();
+    }
 
     private static void writeLog(String pattern, Object... value) {
         var prefix = String.format("t:%s c:%s \t", Thread.currentThread().getName(), "MAIN");
