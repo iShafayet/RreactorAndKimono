@@ -1,13 +1,23 @@
 package rreactor;
 
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class Rreactor {
 
-    protected static LogLevel logLevel = LogLevel.LOG;
+    protected static Executor eventLoop = Executors.newSingleThreadExecutor(new BasicThreadFactory.Builder()
+            .namingPattern("rreactor-%d")
+            .daemon(true)
+            .priority(Thread.MAX_PRIORITY)
+            .build());
+
+    protected static LogLevel logLevel = LogLevel.NONE;
 
     private static boolean isBusy = false;
 
@@ -36,7 +46,7 @@ public class Rreactor {
 
     private static void writeLog(String pattern, Object... value) {
         if (logLevel == LogLevel.LOG) {
-            var prefix = String.format("t:%s c:%s ", Thread.currentThread().getName(), "REACTOR");
+            var prefix = String.format("t:%s c:%s \t", Thread.currentThread().getName(), "REACTOR");
             System.out.println(String.format(prefix + pattern, value));
         }
     }

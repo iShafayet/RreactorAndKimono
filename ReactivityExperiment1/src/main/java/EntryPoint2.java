@@ -1,5 +1,10 @@
 import rreactor.Kimono;
+import rreactor.LogLevel;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.Scanner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -55,34 +60,63 @@ public class EntryPoint2 {
                 })
                 .map(str -> str + ".")
                 .sideEffect(str -> {
-                    System.out.println("OUTPUT 1: " + str);
+                    writeLog("OUTPUT 1: %s", str);
                 })
-                .map(str -> str + "\n")
+                .map(str -> str + " ")
                 .chain(EntryPoint2::getTitleOfGoogle)
                 .map(str -> str + ".")
                 .sideEffect(str -> {
-                    System.out.println("OUTPUT 1: " + str);
+                    writeLog("OUTPUT 2: %s", str);
                 })
                 .run();
 
         Thread.sleep(5_000);
     }
 
-    static Kimono<String> getTitleOfGoogle(String titleSoFar) {
+    static Kimono<String> getTitleOfGoogle(String textSoFar) {
         var future = new CompletableFuture<String>();
+        writeLog("Created future");
         ExecutorService executor = Executors.newFixedThreadPool(1);
         executor.execute(() -> {
+            writeLog("Executing runnable for future");
+//            try {
+//                Thread.sleep(1_000);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+
+            InputStream response = null;
             try {
-                Thread.sleep(1_000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                String url = "https://www.github.com";
+                response = new URL(url).openStream();
+
+                Scanner scanner = new Scanner(response);
+                String responseBody = scanner.useDelimiter("\\A").next();
+                var title = responseBody.substring(responseBody.indexOf("<title>") + 7, responseBody.indexOf("</title>"));
+
+                future.complete(textSoFar + title);
+
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            } finally {
+                try {
+                    assert response != null;
+                    response.close();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+
+                executor.shutdown();
             }
-            future.complete("Google");
-            executor.shutdown();
         });
         return Kimono.produce(future);
     }
 
+
+    private static void writeLog(String pattern, Object... value) {
+        var prefix = String.format("t:%s c:%s \t", Thread.currentThread().getName(), "MAIN");
+        System.out.println(String.format(prefix + pattern, value));
+    }
 
 }
 

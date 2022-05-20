@@ -56,14 +56,16 @@ public class Kimono<T> {
     }
 
     public void run() {
-        writeLog("run()");
-        if (this.parent != null) {
-            writeLog("run() - proxying to parent");
-            this.parent.run();
-            return;
-        }
-        writeLog("run() - sending to be executed");
-        Rreactor.registerKimonoForExecution(this);
+        Rreactor.eventLoop.execute(() -> {
+            writeLog("run()");
+            if (this.parent != null) {
+                writeLog("run() - proxying to parent");
+                this.parent.run();
+                return;
+            }
+            writeLog("run() - sending to be executed");
+            Rreactor.registerKimonoForExecution(this);
+        });
     }
 
     protected void executeInternally() {
@@ -105,7 +107,7 @@ public class Kimono<T> {
                     this.next.inputValue = nextInputValue;
                     Rreactor.registerKimonoForExecution(this.next);
                 }
-            });
+            }, Rreactor.eventLoop);
         }
         this.state = KimonoState.ENDED;
         writeLog("executeInternally() - end");
@@ -121,7 +123,7 @@ public class Kimono<T> {
 
     private void writeLog(String pattern, Object... value) {
         if (Rreactor.logLevel == LogLevel.LOG) {
-            var prefix = String.format("t:%s c:%s ", Thread.currentThread().getName(), "KIMONO");
+            var prefix = String.format("t:%s c:%s \t", Thread.currentThread().getName(), "KIMONO");
             System.out.println(String.format(prefix + pattern, value));
         }
     }
