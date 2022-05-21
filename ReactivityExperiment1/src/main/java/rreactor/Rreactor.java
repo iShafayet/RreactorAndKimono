@@ -15,7 +15,7 @@ public class Rreactor {
             .priority(Thread.MAX_PRIORITY)
             .build());
 
-    protected static LogLevel logLevel = LogLevel.NONE;
+    protected static LogLevel logLevel = LogLevel.LOG;
 
     private static boolean isBusy = false;
 

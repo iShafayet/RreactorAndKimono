@@ -20,6 +20,7 @@ public class Kimono<T> {
     private Function<Object, Kimono<T>> chain_fn;
     private Consumer<T> sideEffect_fn;
     private CompletableFuture<T> produce_future;
+    private Function<Object,T> onError_fn;
 
     public static <U> Kimono<U> now(U value) {
         var kimono = new Kimono<U>();
@@ -34,6 +35,15 @@ public class Kimono<T> {
         kimono.parent = this;
         kimono.operator = KimonoOperator.MAP;
         kimono.map_fn = (Function<Object, U>) fn;
+        return kimono;
+    }
+
+    public <U> Kimono<U> onError(Function<T, U> fn) {
+        var kimono = new Kimono<U>();
+        this.next = kimono;
+        kimono.parent = this;
+        kimono.operator = KimonoOperator.ON_ERROR;
+        kimono.onError_fn = (Function<Object, U>) fn;
         return kimono;
     }
 
@@ -81,11 +91,28 @@ public class Kimono<T> {
                 Rreactor.registerKimonoForExecution(this.next);
             }
         } else if (this.operator == KimonoOperator.MAP) {
-            var nextInputValue = map_fn.apply(this.inputValue);
-            writeLog("nextInputValue: %s", nextInputValue);
-            if (this.next != null) {
-                this.next.inputValue = nextInputValue;
-                Rreactor.registerKimonoForExecution(this.next);
+            try {
+                var nextInputValue = map_fn.apply(this.inputValue);
+                writeLog("nextInputValue: %s", nextInputValue);
+                if (this.next != null) {
+                    this.next.inputValue = nextInputValue;
+                    Rreactor.registerKimonoForExecution(this.next);
+                }
+            } catch (Exception ex) {
+                handleExternalException(ex);
+                return;
+            }
+        } else if (this.operator == KimonoOperator.ON_ERROR) {
+            try {
+                var nextInputValue = onError_fn.apply(this.inputValue);
+                writeLog("nextInputValue: %s", nextInputValue);
+                if (this.next != null) {
+                    this.next.inputValue = nextInputValue;
+                    Rreactor.registerKimonoForExecution(this.next);
+                }
+            } catch (Exception ex) {
+                handleExternalException(ex);
+                return;
             }
         } else if (this.operator == KimonoOperator.SIDE_EFFECT) {
             sideEffect_fn.accept((T) this.inputValue);
@@ -112,6 +139,22 @@ public class Kimono<T> {
         this.state = KimonoState.ENDED;
         writeLog("executeInternally() - end");
         Rreactor.executionCompletedForKimono(this);
+    }
+
+    private void handleExternalException(Exception ex) {
+        writeLog("handleExternalException() - start");
+        Kimono<?> kimono = this;
+        while (kimono.next != null && kimono.operator != KimonoOperator.ON_ERROR) {
+            kimono = kimono.next;
+        }
+        if (kimono.operator == KimonoOperator.ON_ERROR) {
+            writeLog("handleExternalException() - found error handler");
+            kimono.inputValue = ex;
+            kimono.onError_fn.apply(ex);
+            return;
+        }
+        writeLog("handleExternalException() - no error handler found. Throwing the error again.");
+        throw new RuntimeException(ex);
     }
 
     public static <U> Kimono<U> produce(CompletableFuture<U> future) {

@@ -14,6 +14,12 @@ public class EntryPoint2 {
         // THIS CODE WORKS
         Kimono.now("Life")
                 .map(str -> str + " is")
+                .map(str -> {
+                    throw new RuntimeException("Example");
+                })
+                .onError(str -> {
+                    writeLog("", str);
+                })
                 .chain(str -> {
                     return Kimono
                             .now(Math.random())
